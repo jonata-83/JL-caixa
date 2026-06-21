@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0f0e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<title>Caixa</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0f0e;--surface:#161a18;--card:#1c211e;--border:#2a312d;--green:#38e07b;--red:#ff4f5a;--text:#e8ede9;--muted:#5a6b5f;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:calc(8px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;}
+.wrap{width:100%;max-width:480px}
+
+/* SALDO */
+.saldo-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 20px 14px;margin-bottom:10px;position:relative;overflow:hidden;}
+.saldo-card::after{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(56,224,123,.12) 0%,transparent 70%);border-radius:50%;}
+.saldo-label{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:4px;}
+.saldo-valor{font-size:30px;font-weight:500;transition:color .3s;line-height:1.1;font-family:'DM Mono',monospace;}
+.saldo-valor.pos{color:var(--green)}.saldo-valor.neg{color:var(--red)}.saldo-valor.zero{color:var(--muted)}
+.saldo-linha{display:flex;gap:20px;padding-top:10px;border-top:1px solid var(--border);}
+.saldo-item{display:flex;align-items:center;gap:6px;}
+.saldo-item-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.saldo-item-val{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;}
+.saldo-item-val.e{color:var(--green)}.saldo-item-val.s{color:var(--red)}
+
+/* PREVIEW */
+.preview{background:var(--card);border:1px solid #38e07b44;border-radius:12px;padding:12px 16px;margin-bottom:8px;display:none;}
+.preview.show{display:block;}
+.preview-val-big{font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:#e8ede9;line-height:1;}
+.preview-val-big.muted{color:var(--muted)}
+.preview-desc{font-family:'DM Mono',monospace;font-size:14px;color:#e8ede9;margin-top:4px;}
+.preview-desc.muted{color:var(--muted)}
+
+/* INPUT */
+.input-area{background:transparent;border:none;padding:8px 0;margin-bottom:12px;}
+.input-row{display:flex;gap:12px;align-items:center;}
+.desc-wrap{flex:1;}
+.desc-wrap input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:100px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:16px;padding:15px 22px;
+  outline:none;transition:border-color .2s;text-transform:uppercase;}
+.desc-wrap input:focus{border-color:var(--border);}
+.desc-wrap input::placeholder{color:var(--muted);text-transform:none;}
+.btn{width:46px;height:46px;border-radius:50%;border:none;font-size:15px;font-weight:800;cursor:pointer;
+  transition:transform .12s,box-shadow .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.btn:active{transform:scale(.88)}
+.btn-e{background:var(--green);color:#0a1a10}.btn-e:hover{box-shadow:0 0 24px rgba(56,224,123,.55)}
+.btn-s{background:var(--red);color:#fff}.btn-s:hover{box-shadow:0 0 24px rgba(255,79,90,.55)}
+
+/* TOOLBAR */
+.lista-toolbar{display:flex;justify-content:flex-end;margin-bottom:6px;padding:0 2px;}
+.btn-lupa{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 6px;transition:color .2s;}
+.btn-lupa.ativo{color:var(--green)}
+.search-bar{display:none;margin-bottom:12px;}
+.search-bar.show{display:block;}
+.search-input{width:100%;background:var(--card);border:1px solid var(--green);border-radius:100px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:14px;padding:10px 18px;outline:none;}
+.search-input::placeholder{color:var(--muted)}
+
+/* CARDS */
+.lista{display:flex;flex-direction:column;gap:8px;}
+.item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;
+  display:flex;align-items:center;gap:10px;animation:slideIn .25s cubic-bezier(.23,1,.32,1);
+  position:relative;overflow:hidden;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
+.item.e::before{background:var(--green)}.item.s::before{background:var(--red)}
+.item.arquivado{opacity:0.35;}
+.item.enviado{opacity:0.45;}
+.item.arquivado .item-desc::after{content:' \1F512';font-size:11px;}
+.item-info{flex:1;min-width:0;overflow:hidden;}
+.item-desc{font-size:14px;font-weight:400;line-height:1.3;word-break:break-word;font-family:'DM Mono',monospace;}
+.item-data{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;}
+.item-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:400;flex-shrink:0;margin-left:auto;padding-left:8px;}
+.item.e .item-val{color:var(--green)}.item.s .item-val{color:var(--red)}
+.vazio{text-align:center;padding:48px 0;color:var(--muted);font-family:'DM Mono',monospace;font-size:13px;}
+.vazio-icon{font-size:36px;margin-bottom:12px;opacity:.3;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--card);border:1px solid var(--border);font-family:'DM Mono',monospace;
+  font-size:12px;padding:10px 20px;border-radius:100px;color:var(--text);
+  opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:500;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* SHEETS / MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:none;align-items:flex-end;justify-content:center;}
+.overlay.show{display:flex;}
+.sheet{background:#1c211e;border:1px solid var(--border);border-radius:24px 24px 0 0;
+  padding:20px 20px 44px;width:100%;max-width:480px;animation:slideIn .22s cubic-bezier(.23,1,.32,1);}
+.sheet-info{padding:12px 16px;background:#0d0f0e;border-radius:12px;margin-bottom:16px;}
+.sheet-desc{font-size:15px;font-family:'DM Mono',monospace;margin-bottom:2px;}
+.sheet-val{font-size:13px;font-family:'DM Mono',monospace;color:#7eb8ff;}
+.sbt{width:100%;padding:15px;border-radius:14px;border:none;font-family:'Syne',sans-serif;
+  font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;text-align:left;
+  display:flex;align-items:center;gap:12px;}
+.sbt.pdf{background:#1a2e1a;color:var(--green)}.sbt.edit{background:#1a1e2e;color:#7eb8ff}
+.sbt.del{background:#2a1518;color:var(--red)}.sbt.wa{background:#075e54;color:#fff}
+.sbt.cancel{background:#2a312d;color:var(--text);justify-content:center;}
+.sbt-count{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);margin-left:auto;font-weight:400;}
+.kw-label{font-size:10px;letter-spacing:.2em;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:6px;}
+.kw-input{width:100%;background:#0d0f0e;border:1px solid var(--green);border-radius:10px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:14px;padding:10px 14px;outline:none;text-transform:uppercase;margin-bottom:14px;}
+/* delete */
+.del-title{font-size:16px;font-weight:800;margin-bottom:6px;color:var(--red);}
+.del-name{font-size:18px;font-weight:800;margin-bottom:6px;}
+.del-val{font-size:28px;font-weight:800;font-family:'DM Mono',monospace;margin-bottom:20px;letter-spacing:-1px;}
+.del-lbl{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.del-input{width:100%;background:#0d0f0e;border:1px solid var(--red);border-radius:10px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:22px;font-weight:700;
+  padding:14px 16px;outline:none;text-align:center;letter-spacing:.4em;}
+.del-input.ok{border-color:var(--green);color:var(--green);}
+.del-erro{color:var(--red);font-family:'DM Mono',monospace;font-size:12px;margin-top:8px;display:none;text-align:center;}
+.del-ok{color:var(--green);font-family:'DM Mono',monospace;font-size:12px;margin-top:8px;display:none;text-align:center;}
+.mbtns{display:flex;gap:10px;margin-top:20px;}
+.mbtn{flex:1;padding:14px;border-radius:100px;border:none;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.mbtn.save{background:var(--green);color:#0a1a10}.mbtn.danger{background:var(--red);color:#fff}.mbtn.cancel{background:#2a312d;color:var(--text)}
+/* edit */
+.ef{margin-bottom:14px;}
+.el{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:6px;}
+.ei{width:100%;background:#0d0f0e;border:1px solid var(--border);border-radius:10px;color:var(--text);
+  font-family:'DM Mono',monospace;font-size:15px;padding:12px 16px;outline:none;transition:border-color .2s;text-transform:uppercase;}
+.ei:focus{border-color:#7eb8ff}.ei.no{text-transform:none}
+.esel{width:100%;background:#0d0f0e;border:1px solid var(--border);border-radius:10px;color:var(--text);
+  font-family:'DM Mono',monospace;font-size:15px;padding:12px 16px;outline:none;appearance:none;}
+.etitle{font-size:16px;font-weight:800;margin-bottom:18px;color:#7eb8ff;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="saldo-card">
+  <div><div class="saldo-label">Saldo atual</div>
+  <div class="saldo-valor zero" id="saldoValor">R$ 0,00</div></div>
+  <div class="saldo-linha">
+    <div class="saldo-item"><span class="saldo-item-label">&#9650;</span><span class="saldo-item-val e" id="totalE">R$ 0,00</span></div>
+    <div class="saldo-item"><span class="saldo-item-label">&#9660;</span><span class="saldo-item-val s" id="totalS">R$ 0,00</span></div>
+  </div>
+</div>
+
+<div class="preview" id="preview">
+  <div class="preview-val-big" id="pvValor">&#8212;</div>
+  <div class="preview-desc muted" id="pvDesc"></div>
+</div>
+
+<div class="input-area">
+  <div class="input-row">
+    <button class="btn btn-e" onclick="lancar('e')"><span style="width:10px;height:10px;background:#0a1a10;border-radius:50%;display:block;"></span></button>
+    <div class="desc-wrap"><input type="text" id="lancInput" placeholder="Digitar..." maxlength="100" autocomplete="off"></div>
+    <button class="btn btn-s" onclick="lancar('s')"><span style="width:10px;height:10px;background:#fff;border-radius:50%;display:block;"></span></button>
+  </div>
+</div>
+
+<div id="sync-status" style="text-align:right;font-size:10px;font-family:'DM Mono',monospace;height:14px;margin-bottom:2px;"></div>
+<div class="lista-toolbar">
+  <button class="btn-lupa" onclick="abrirConfig()" title="Configuracoes" style="font-size:16px;margin-right:4px;">&#9881;&#65039;</button>
+  <button class="btn-lupa" onclick="abrirPDFGeral()" title="PDF Geral" style="font-size:16px;margin-right:4px;">&#128203;</button>
+  <button class="btn-lupa" id="btnLupa" onclick="toggleBusca()">&#128269;</button>
+</div>
+<div class="search-bar" id="searchBar">
+  <input class="search-input" id="searchInput" type="text" placeholder="Buscar lancamento..." oninput="filtrar()">
+</div>
+
+<div class="lista" id="lista"></div>
+<div class="vazio" id="vazio"><div class="vazio-icon">&#9678;</div>nenhum lancamento ainda</div>
+
+</div>
+
+<!-- PDF GRUPO -->
+<div class="overlay" id="pdf-overlay">
+  <div class="sheet">
+    <div class="sheet-info"><div class="sheet-desc" id="pdf-desc"></div><div class="sheet-val" id="pdf-val"></div></div>
+    <div class="kw-label">Palavra-chave do grupo</div>
+    <input class="kw-input" id="pdf-keyword" type="text" oninput="atualizarContagemPDF()" placeholder="Ex: DESPESAS JL">
+    <button class="sbt pdf" onclick="gerarPDFGrupo()">&#128196; Gerar PDF do grupo<span class="sbt-count" id="pdf-count"></span></button>
+    <button class="sbt cancel" onclick="fecharPDF()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ACTION SHEET -->
+<div class="overlay" id="action-overlay">
+  <div class="sheet">
+    <div class="sheet-info"><div class="sheet-desc" id="action-desc"></div><div class="sheet-val" id="action-val"></div></div>
+    <button class="sbt edit" onclick="abrirEditarDoAction()">&#9999;&#65039; Editar lancamento</button>
+    <button class="sbt del"  onclick="abrirDeleteDoAction()">&#128465;&#65039; Excluir este lancamento</button>
+    <button class="sbt cancel" onclick="fecharAction()">Cancelar</button>
+  </div>
+</div>
+
+<!-- DELETE -->
+<div class="overlay" id="del-overlay">
+  <div class="sheet">
+    <div class="del-title">&#9888;&#65039; Excluir lancamento</div>
+    <div class="del-name" id="del-desc"></div>
+    <div class="del-val"  id="del-val"></div>
+    <div class="del-lbl">Digite o codigo para confirmar</div>
+    <input class="del-input" id="del-codigo" type="text" maxlength="6" autocomplete="off" placeholder="......">
+    <div class="del-erro" id="del-erro">Codigo incorreto. Tente novamente.</div>
+    <div class="del-ok"   id="del-ok">&#10003; Codigo confirmado</div>
+    <div class="mbtns">
+      <button class="mbtn cancel" onclick="fecharDelete()">Cancelar</button>
+      <button class="mbtn danger" onclick="confirmarDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT -->
+<div class="overlay" id="edit-overlay">
+  <div class="sheet">
+    <div class="etitle">&#9999;&#65039; Editar lancamento</div>
+    <div class="ef"><div class="el">Descricao</div><input class="ei" id="edit-desc" type="text" maxlength="80"></div>
+    <div class="ef"><div class="el">Valor (R$)</div><input class="ei no" id="edit-valor" type="number" step="0.01" min="0"></div>
+    <div class="ef"><div class="el">Tipo</div>
+      <select class="esel" id="edit-tipo">
+        <option value="e">Entrada</option>
+        <option value="s">Saida</option>
+      </select></div>
+    <div class="mbtns">
+      <button class="mbtn cancel" onclick="fecharEditar()">Cancelar</button>
+      <button class="mbtn save"   onclick="salvarEdicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF GERAL -->
+<div class="overlay" id="pdfgeral-overlay">
+  <div class="sheet">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px;">&#128203; PDF Geral</div>
+    <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:16px;" id="pdfgeral-info"></div>
+    <button class="sbt" style="background:#1a1a2e;color:#7eb8ff;" onclick="enviarPDFGeral()">&#128228; PDF - Enviar</button>
+    <button class="sbt wa" onclick="compartilharWhatsApp()">&#128172; Compartilhar WhatsApp</button>
+    <button class="sbt cancel" onclick="document.getElementById('pdfgeral-overlay').classList.remove('show')">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PIN -->
+<div class="overlay" id="pin-overlay" style="z-index:9999;">
+  <div class="sheet">
+    <div class="etitle" style="text-align:center;">&#128274; Caixa JL</div>
+    <input class="ei no" id="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="&#8226;&#8226;&#8226;&#8226;" style="text-align:center;font-size:26px;letter-spacing:10px;margin-top:6px;" autocomplete="off">
+    <div class="del-erro" id="pin-erro">PIN incorreto. Tente novamente.</div>
+    <div class="mbtns">
+      <button class="mbtn save" style="width:100%;" onclick="confirmarPin()">Entrar</button>
+    </div>
+    <div style="text-align:center;margin-top:14px;">
+      <a href="javascript:void(0)" onclick="voltarParaEscolha()" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">&#8592; Voltar</a>
+    </div>
+  </div>
+</div>
+
+<!-- ESPACO -->
+<div class="overlay" id="espaco-overlay" style="z-index:9999;">
+  <div class="sheet">
+    <div id="espaco-escolha">
+      <div class="etitle" style="text-align:center;">Como vai usar o app?</div>
+      <div class="mbtns" style="flex-direction:column;margin-top:14px;">
+        <button class="mbtn save" style="width:100%;" onclick="novoUsuario()">&#127881; Novo usuario</button>
+        <button class="mbtn" style="width:100%;background:#1a1a2e;color:#7eb8ff;" onclick="abrirPinEntrar()">&#128279; Entrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY='caixa_v1';
+let lancamentos=JSON.parse(localStorage.getItem(KEY)||'[]');
+
+var PIN_CORRETO='2340';
+var DEVICE_KEY='caixa_device_id';
+var GRUPO_COMPARTILHADO='compartilhado';
+
+function gerarDeviceId(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'dev-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+}
+
+(function verificarAcesso(){
+  var dev=localStorage.getItem(DEVICE_KEY);
+  if(!dev){
+    document.getElementById('espaco-overlay').classList.add('show');
+  }
+})();
+
+function finalizarEspaco(dev){
+  localStorage.setItem(DEVICE_KEY,dev);
+  document.getElementById('espaco-overlay').classList.remove('show');
+  document.getElementById('pin-overlay').classList.remove('show');
+  if(window.iniciarSincronizacao) window.iniciarSincronizacao(dev);
+}
+
+function novoUsuario(){
+  finalizarEspaco(gerarDeviceId());
+}
+
+function abrirPinEntrar(){
+  document.getElementById('espaco-overlay').classList.remove('show');
+  document.getElementById('pin-overlay').classList.add('show');
+  setTimeout(function(){
+    var el=document.getElementById('pin-input');
+    if(el) el.focus();
+  },200);
+}
+
+function voltarParaEscolha(){
+  var input=document.getElementById('pin-input');
+  input.value='';
+  document.getElementById('pin-erro').style.display='none';
+  document.getElementById('pin-overlay').classList.remove('show');
+  document.getElementById('espaco-overlay').classList.add('show');
+}
+
+function confirmarPin(){
+  var input=document.getElementById('pin-input');
+  var val=input.value.trim();
+  if(val!==PIN_CORRETO){
+    document.getElementById('pin-erro').style.display='block';
+    input.value='';
+    return;
+  }
+  finalizarEspaco(GRUPO_COMPARTILHADO);
+}
+
+(function(){
+  var el=document.getElementById('pin-input');
+  if(!el) return;
+  el.addEventListener('keydown',function(e){if(e.key==='Enter')confirmarPin();});
+  el.addEventListener('input',function(){document.getElementById('pin-erro').style.display='none';});
+})();
+
+function fmt(v){return 'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+function fmtS(v){
+  var s=Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return 'R$ '+s;
+}
+
+function atualizar(){
+  var tE=lancamentos.filter(function(x){return x.t==='e';}).reduce(function(a,x){return a+x.v;},0);
+  var tS=lancamentos.filter(function(x){return x.t==='s';}).reduce(function(a,x){return a+x.v;},0);
+  var sl=tE-tS;
+  document.getElementById('totalE').textContent=fmtS(tE);
+  document.getElementById('totalS').textContent=fmtS(tS);
+  var sv=document.getElementById('saldoValor');
+  if(sl>0){sv.className='saldo-valor pos';sv.textContent=fmtS(sl);}
+  else if(sl<0){sv.className='saldo-valor neg';sv.textContent='- '+fmtS(-sl);}
+  else{sv.className='saldo-valor zero';sv.textContent='R$ 0,00';}
+  var lista=document.getElementById('lista');
+  var vazio=document.getElementById('vazio');
+  if(!lancamentos.length){lista.innerHTML='';vazio.style.display='block';return;}
+  vazio.style.display='none';
+  lista.innerHTML=[...lancamentos].reverse().map(function(l,i){
+    var idx=lancamentos.length-1-i;
+    var arq=l.arquivado?' arquivado':l.enviadoGeral?' enviado':'';
+    return '<div class="item '+l.t+arq+'" data-idx="'+idx+'"'+
+      ' ontouchstart="onLongPressStart(event,'+idx+')"'+
+      ' ontouchend="onTouchEnd(event,'+idx+')"'+
+      ' ontouchmove="onTouchMoveCheck(event)"'+
+      ' ontouchcancel="onLongPressCancel()">'+
+      '<div class="item-info">'+
+      '<div class="item-desc">'+l.d+'</div>'+
+      '<div class="item-data">'+l.dt+'</div>'+
+      '</div>'+
+      '<div class="item-val">'+(l.t==='e'?'+':'-')+' '+fmt(l.v)+'</div>'+
+      '</div>';
+  }).join('');
+  localStorage.setItem(KEY,JSON.stringify(lancamentos));
+  if(window.salvarNuvem) window.salvarNuvem();
+  filtrar();
+}
+
+function parseLanc(raw){
+  var limpo=raw.replace(/R[$]\s*/gi,'').trim();
+  var match=limpo.match(/(\d+(?:[.,]\d{1,2})?)/);
+  if(!match) return null;
+  var valor=parseFloat(match[1].replace(',','.'));
+  var desc=limpo.replace(match[1],'').trim().replace(/^[-\s]+|[-\s]+$/g,'').trim();
+  return {valor:valor,desc:desc};
+}
+
+function lancar(tipo){
+  var raw=document.getElementById('lancInput').value.trim().toUpperCase();
+  if(!raw){toast('Digite o valor e descricao');return;}
+  var p=parseLanc(raw);
+  if(!p||p.valor<=0){toast('Valor invalido');return;}
+  var agora=new Date();
+  var dt=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  lancamentos.push({t:tipo,v:p.valor,d:p.desc||(tipo==='e'?'ENTRADA':'SAIDA'),dt:dt});
+  document.getElementById('lancInput').value='';
+  document.getElementById('lancInput').focus();
+  document.getElementById('preview').classList.remove('show');
+  atualizar();
+  toast(tipo==='e'?'Entrada registrada':'Saida registrada');
+}
+
+var lancInput=document.getElementById('lancInput');
+var preview=document.getElementById('preview');
+function atualizarPreview(){
+  var raw=lancInput.value.toUpperCase();
+  if(!raw.trim()){preview.classList.remove('show');return;}
+  preview.classList.add('show');
+  var p=parseLanc(raw);
+  var pv=document.getElementById('pvValor');
+  var pd=document.getElementById('pvDesc');
+  if(p&&p.valor>0){
+    pv.textContent=fmt(p.valor);pv.className='preview-val-big';
+    pd.textContent=p.desc||'';
+    pd.className=p.desc?'preview-desc':'preview-desc muted';
+  } else {
+    preview.classList.remove('show');return;
+  }
+}
+lancInput.addEventListener('input',atualizarPreview);
+lancInput.addEventListener('focus',function(){
+  atualizarPreview();
+  setTimeout(function(){document.querySelector('.input-area').scrollIntoView({behavior:'smooth',block:'center'});},350);
+});
+lancInput.addEventListener('blur',function(){setTimeout(function(){preview.classList.remove('show');},150);});
+lancInput.addEventListener('keydown',function(e){if(e.key==='Enter')lancar('e');});
+
+var buscaAtiva=false;
+function toggleBusca(){
+  buscaAtiva=!buscaAtiva;
+  document.getElementById('searchBar').classList.toggle('show',buscaAtiva);
+  document.getElementById('btnLupa').classList.toggle('ativo',buscaAtiva);
+  if(buscaAtiva) document.getElementById('searchInput').focus();
+  else{document.getElementById('searchInput').value='';filtrar();}
+}
+function filtrar(){
+  var q=document.getElementById('searchInput').value.toLowerCase().trim();
+  document.querySelectorAll('.item').forEach(function(el){
+    if(el.classList.contains('arquivado')){el.style.display='';return;}
+    var txt=(el.querySelector('.item-desc')||{textContent:''}).textContent+' '+(el.querySelector('.item-val')||{textContent:''}).textContent;
+    el.style.display=(!q||txt.toLowerCase().includes(q))?'':'none';
+  });
+}
+
+function remover(idx){lancamentos.splice(idx,1);atualizar();}
+
+// TOUCH
+var longPressTimer=null,longPressActive=false,touchStartX=0,touchStartY=0;
+function onLongPressStart(e,idx){
+  longPressActive=false;
+  clearTimeout(longPressTimer);
+  var t=e.touches[0];
+  touchStartX=t.clientX;touchStartY=t.clientY;
+  var el=document.querySelector('[data-idx="'+idx+'"]');
+  if(el){el.style.outline='2px solid #38e07b';el.style.outlineOffset='-2px';}
+  longPressTimer=setTimeout(function(){
+    longPressActive=true;
+    if(el){el.style.outline='';el.style.outlineOffset='';}
+    abrirPDF(idx);
+  },2000);
+}
+function onLongPressCancel(){
+  clearTimeout(longPressTimer);
+  document.querySelectorAll('.item').forEach(function(el){el.style.outline='';el.style.outlineOffset='';});
+}
+function onTouchMoveCheck(e){
+  var t=e.touches[0];
+  if(Math.abs(t.clientX-touchStartX)>60||Math.abs(t.clientY-touchStartY)>60) onLongPressCancel();
+}
+var lastTap=0,lastTapIdx=-1;
+function onTouchEnd(e,idx){
+  if(longPressActive){longPressActive=false;return;}
+  clearTimeout(longPressTimer);onLongPressCancel();
+  var l=lancamentos[idx];
+  var now=Date.now();
+  if(now-lastTap<350&&lastTapIdx===idx){
+    if(l&&(l.arquivado||l.enviadoGeral)){abrirDesbloquear(idx);}
+    else{abrirAction(idx);}
+    lastTap=0;lastTapIdx=-1;
+  } else{lastTap=now;lastTapIdx=idx;}
+}
+
+// PDF GRUPO
+var pdfIdx=-1;
+function abrirPDF(idx){
+  var l=lancamentos[idx];
+  if(!l||l.arquivado) return;
+  pdfIdx=idx;
+  document.getElementById('pdf-desc').textContent=l.d;
+  document.getElementById('pdf-keyword').value=l.d;
+  atualizarContagemPDF();
+  document.getElementById('pdf-overlay').classList.add('show');
+}
+function fecharPDF(){document.getElementById('pdf-overlay').classList.remove('show');pdfIdx=-1;}
+function atualizarContagemPDF(){
+  var kw=document.getElementById('pdf-keyword').value.trim().toUpperCase();
+  var grupo=kw?lancamentos.filter(function(x){return !x.arquivado&&x.d.toUpperCase().includes(kw);}):[];
+  var c=grupo.length;
+  var total=grupo.reduce(function(a,x){return a+(x.t==='e'?x.v:-x.v);},0);
+  document.getElementById('pdf-count').textContent=c+' lancamento(s)';
+  document.getElementById('pdf-desc').textContent=kw||'—';
+  document.getElementById('pdf-val').textContent=
+    c>0? c+' lancamento(s)  •  '+(total>=0?'+ ':' - ')+fmt(Math.abs(total)) : 'Nenhum lancamento';
+}
+
+function buildPDFRows(grupo){
+  return grupo.map(function(x){
+    var cor=x.t==='e'?'#1a7a3a':'#c0392b';
+    var sinal=x.t==='e'?'+':'-';
+    var arq=x.arquivado?' (arq.)':'';
+    return '<tr style="border-bottom:1px solid #eee">'+
+      '<td style="padding:6px 8px;font-size:11px;color:#555;white-space:nowrap">'+x.dt+'<\/td>'+
+      '<td style="padding:6px 8px;font-size:13px;font-weight:700;color:'+cor+';white-space:nowrap;text-align:right">'+sinal+' '+fmt(x.v)+'<\/td>'+
+      '<td style="padding:6px 8px;font-size:13px">'+x.d+arq+'<\/td>'+
+      '<\/tr>';
+  }).join('');
+}
+
+function buildPDFStyle(){
+  return '<style>body{font-family:Arial,sans-serif;padding:16px;color:#111;font-size:13px}'+
+    'h2{margin-bottom:2px;font-size:16px}p{color:#666;margin-bottom:12px;font-size:12px}'+
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}'+
+    'col.c1{width:130px}col.c2{width:120px}col.c3{width:auto}'+
+    'th{background:#f0f0f0;padding:7px 8px;text-align:left;font-size:11px;border-bottom:2px solid #ccc}'+
+    'th.r{text-align:right}'+
+    '.tot td{padding:12px 8px;font-weight:700;font-size:13px;border-top:2px solid #222;background:#f8f8f8}'+
+    '@media print{.nobtn{display:none}}<\/style>';
+}
+
+function buildPDFFooter(tE,tS,sl){
+  return '<tfoot><tr><td colspan="3" class="tot">'+
+    'Entradas: <strong style="color:#1a7a3a">'+fmt(tE)+'<\/strong> &nbsp;&nbsp; '+
+    'Saidas: <strong style="color:#c0392b">'+fmt(tS)+'<\/strong> &nbsp;&nbsp; '+
+    'Saldo: <strong style="color:'+(sl>=0?'#1a7a3a':'#c0392b')+'">'+(sl>=0?'+':'-')+fmt(Math.abs(sl))+'<\/strong>'+
+    '<\/td><\/tr><\/tfoot>';
+}
+
+function gerarPDFGrupo(){
+  var kw=document.getElementById('pdf-keyword').value.trim().toUpperCase();
+  if(!kw){toast('Digite uma palavra-chave');return;}
+  var grupo=lancamentos.filter(function(x){return !x.arquivado&&x.d.toUpperCase().includes(kw);});
+  if(!grupo.length){toast('Nenhum lancamento encontrado');return;}
+  var tE=grupo.filter(function(x){return x.t==='e';}).reduce(function(a,x){return a+x.v;},0);
+  var tS=grupo.filter(function(x){return x.t==='s';}).reduce(function(a,x){return a+x.v;},0);
+  var sl=tE-tS;
+  var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+kw+'</title>'+buildPDFStyle()+'<\/head><body>'+
+    '<h2>'+kw+'<\/h2><p>'+new Date().toLocaleDateString('pt-BR')+' - '+grupo.length+' lancamento(s)<\/p>'+
+    '<button class="nobtn" onclick="window.print()" style="margin-bottom:12px;padding:8px 18px;cursor:pointer">Imprimir / Salvar PDF<\/button>'+
+    '<table><colgroup><col class="c1"><col class="c2"><col class="c3"><\/colgroup>'+
+    '<thead><tr><th>DATA<\/th><th class="r">VALOR<\/th><th>DESCRICAO<\/th><\/tr><\/thead>'+
+    '<tbody>'+buildPDFRows(grupo)+'<\/tbody>'+buildPDFFooter(tE,tS,sl)+'<\/table><\/body><\/html>';
+  var blob=new Blob([doc],{type:'text/html'});
+  var nomeg=kw.replace(/\s+/g,'-')+'-'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.html';
+  var fg=new File([blob],nomeg,{type:'text/html'});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[fg]})){
+    navigator.share({title:kw,files:[fg]}).catch(function(){baixarArquivo(blob,nomeg);});
+  } else { baixarArquivo(blob,nomeg); }
+  lancamentos.forEach(function(x,i){if(!x.arquivado&&x.d.toUpperCase().includes(kw)) lancamentos[i].arquivado=true;});
+  localStorage.setItem(KEY,JSON.stringify(lancamentos));
+  if(window.salvarNuvem) window.salvarNuvem();
+  atualizar();fecharPDF();
+  toast('PDF gerado - '+grupo.length+' arquivados');
+}
+
+// ACTION
+var actionIdx=-1;
+function abrirAction(idx){
+  var l=lancamentos[idx];
+  if(!l||l.arquivado) return;
+  actionIdx=idx;
+  document.getElementById('action-desc').textContent=l.d;
+  document.getElementById('action-val').textContent=(l.t==='e'?'+ ':'- ')+fmt(l.v);
+  document.getElementById('action-overlay').classList.add('show');
+}
+function fecharAction(){document.getElementById('action-overlay').classList.remove('show');actionIdx=-1;}
+function abrirDeleteDoAction(){fecharAction();abrirConfirmDelete(actionIdx===-1?0:actionIdx);}
+function abrirEditarDoAction(){var i=actionIdx;fecharAction();abrirEditar(i);}
+
+// DELETE
+var pendingDeleteIdx=-1;
+function abrirConfirmDelete(idx){
+  var l=lancamentos[idx];if(!l) return;
+  pendingDeleteIdx=idx;
+  document.getElementById('del-desc').textContent=l.d;
+  document.getElementById('del-val').textContent=(l.t==='e'?'+ ':'- ')+fmt(l.v);
+  document.getElementById('del-codigo').value='';
+  document.getElementById('del-codigo').className='del-input';
+  document.getElementById('del-erro').style.display='none';
+  document.getElementById('del-ok').style.display='none';
+  document.getElementById('del-desc').style.color='';
+  document.getElementById('del-val').style.color='';
+  document.getElementById('del-overlay').classList.add('show');
+  setTimeout(function(){document.getElementById('del-codigo').focus();},100);
+}
+function fecharDelete(){document.getElementById('del-overlay').classList.remove('show');}
+function confirmarDelete(){
+  var cod=document.getElementById('del-codigo').value.trim();
+  if(cod!=='abc123'){
+    document.getElementById('del-erro').style.display='block';
+    document.getElementById('del-codigo').value='';
+    document.getElementById('del-codigo').focus();return;
+  }
+  document.getElementById('del-codigo').className='del-input ok';
+  document.getElementById('del-ok').style.display='block';
+  document.getElementById('del-erro').style.display='none';
+  document.getElementById('del-desc').style.color='#38e07b';
+  document.getElementById('del-val').style.color='#38e07b';
+  setTimeout(function(){remover(pendingDeleteIdx);fecharDelete();toast('Lancamento excluido');},800);
+}
+
+// EDIT
+var editIdx=-1;
+function abrirEditar(idx){
+  var l=lancamentos[idx];if(!l) return;
+  editIdx=idx;
+  document.getElementById('edit-desc').value=l.d;
+  document.getElementById('edit-valor').value=l.v;
+  document.getElementById('edit-tipo').value=l.t;
+  document.getElementById('edit-overlay').classList.add('show');
+}
+function fecharEditar(){document.getElementById('edit-overlay').classList.remove('show');editIdx=-1;}
+function salvarEdicao(){
+  var desc=document.getElementById('edit-desc').value.trim().toUpperCase();
+  var valor=parseFloat(document.getElementById('edit-valor').value);
+  var tipo=document.getElementById('edit-tipo').value;
+  if(!desc||!valor||valor<=0){toast('Preencha todos os campos');return;}
+  lancamentos[editIdx]=Object.assign({},lancamentos[editIdx],{d:desc,v:valor,t:tipo});
+  fecharEditar();atualizar();toast('Lancamento atualizado');
+}
+
+// PDF GERAL
+function abrirPDFGeral(){
+  var novos=lancamentos.filter(function(x){return !x.enviadoGeral;}).length;
+  var total=lancamentos.length;
+  document.getElementById('pdfgeral-info').textContent=novos+' novos para enviar - '+total+' total';
+  document.getElementById('pdfgeral-overlay').classList.add('show');
+}
+
+function buildPDFGeralHTML(lista){
+  var tE=lista.filter(function(x){return x.t==='e';}).reduce(function(a,x){return a+x.v;},0);
+  var tS=lista.filter(function(x){return x.t==='s';}).reduce(function(a,x){return a+x.v;},0);
+  var sl=tE-tS;
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatorio Caixa</title>'+buildPDFStyle()+'<\/head><body>'+
+    '<h2>Relatorio Geral - Caixa<\/h2><p>'+new Date().toLocaleDateString('pt-BR')+' - '+lista.length+' lancamentos<\/p>'+
+    '<button class="nobtn" onclick="window.print()" style="margin-bottom:12px;padding:8px 18px;cursor:pointer">Imprimir / Salvar PDF<\/button>'+
+    '<table><colgroup><col class="c1"><col class="c2"><col class="c3"><\/colgroup>'+
+    '<thead><tr><th>DATA<\/th><th class="r">VALOR<\/th><th>DESCRICAO<\/th><\/tr><\/thead>'+
+    '<tbody>'+buildPDFRows(lista)+'<\/tbody>'+buildPDFFooter(tE,tS,sl)+'<\/table><\/body><\/html>';
+}
+
+function enviarPDFGeral(){
+  var lista=lancamentos.filter(function(x){return !x.enviadoGeral;});
+  if(!lista.length){toast('Nenhum lancamento novo para enviar');document.getElementById('pdfgeral-overlay').classList.remove('show');return;}
+  var doc=buildPDFGeralHTML(lista);
+  var blob=new Blob([doc],{type:'text/html'});
+  var nome='relatorio-caixa-'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.html';
+  var file=new File([blob],nome,{type:'text/html'});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({title:'Relatorio Caixa',files:[file]}).catch(function(){baixarArquivo(blob,nome);});
+  } else {
+    baixarArquivo(blob,nome);
+  }
+  // Marcar como enviado
+  lancamentos.forEach(function(x,i){
+    if(!x.enviadoGeral) lancamentos[i].enviadoGeral=true;
+  });
+  localStorage.setItem(KEY,JSON.stringify(lancamentos));
+  if(window.salvarNuvem) window.salvarNuvem();
+  atualizar();
+  document.getElementById('pdfgeral-overlay').classList.remove('show');
+  toast(lista.length+' lancamentos marcados como enviados');
+}
+
+function baixarArquivo(blob,nome){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=nome;
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},1000);
+}
+
+function compartilharWhatsApp(){
+  var ativos=lancamentos.filter(function(x){return !x.enviadoGeral;});
+  if(!ativos.length){toast('Nenhum lancamento novo');return;}
+  var tE=ativos.filter(function(x){return x.t==='e';}).reduce(function(a,x){return a+x.v;},0);
+  var tS=ativos.filter(function(x){return x.t==='s';}).reduce(function(a,x){return a+x.v;},0);
+  var sl=tE-tS;
+  var linhas=['*RELATORIO CAIXA*','_'+new Date().toLocaleDateString('pt-BR')+'_',''];
+  ativos.forEach(function(x){linhas.push((x.t==='e'?'+ ':' - ')+fmt(x.v)+' '+x.d);});
+  linhas.push('');
+  linhas.push('Entradas: '+fmt(tE));
+  linhas.push('Saidas:   '+fmt(tS));
+  linhas.push('Saldo:    '+(sl>=0?'+':'-')+fmt(Math.abs(sl)));
+  var txt=linhas.join('\n');
+  if(navigator.share){navigator.share({title:'Relatorio Caixa',text:txt}).catch(function(){});}
+  else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+  lancamentos.forEach(function(x,i){if(!x.enviadoGeral&&!x.arquivado) lancamentos[i].enviadoGeral=true;});
+  localStorage.setItem(KEY,JSON.stringify(lancamentos));
+  if(window.salvarNuvem) window.salvarNuvem();
+  atualizar();
+  document.getElementById('pdfgeral-overlay').classList.remove('show');
+}
+
+function toast(msg){
+  var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2200);
+}
+
+atualizar();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
+}
+</script>
+
+  
+<!-- DESBLOQUEAR INDIVIDUAL -->
+<div class="overlay" id="desbloquear-overlay">
+  <div class="sheet">
+    <div class="sheet-info">
+      <div class="sheet-desc" id="desbl-desc"></div>
+      <div class="sheet-val" id="desbl-val"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:16px;" id="desbl-status"></div>
+    <div class="del-lbl">Digite o codigo para confirmar</div>
+    <input class="del-input" id="desbl-codigo" type="text" maxlength="6" autocomplete="off" placeholder="......">
+    <div class="del-erro" id="desbl-erro" style="display:none">Codigo incorreto.</div>
+    <div class="mbtns" style="margin-top:16px;">
+      <button class="mbtn cancel" onclick="fecharDesbloquear()">Cancelar</button>
+      <button class="mbtn save" onclick="desbloquearCard()">&#128275; Desbloquear</button>
+    </div>
+  </div>
+</div>
+
+<!-- DESBLOQUEAR TODOS -->
+<div class="overlay" id="desbl-todos-overlay">
+  <div class="sheet">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px;color:#38e07b;">&#128275; Desbloquear todos</div>
+    <div style="font-size:13px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:20px;">Todos os cards bloqueados voltam ao normal.</div>
+    <div class="del-lbl">Digite o codigo para confirmar</div>
+    <input class="del-input" id="desbl-todos-codigo" type="text" maxlength="6" autocomplete="off" placeholder="......">
+    <div class="del-erro" id="desbl-todos-erro" style="display:none">Codigo incorreto.</div>
+    <div class="mbtns" style="margin-top:20px;">
+      <button class="mbtn cancel" onclick="fecharDesbloquearTodos()">Cancelar</button>
+      <button class="mbtn save" onclick="desbloquearTodos()">&#128275; Desbloquear</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG -->
+<div class="overlay" id="config-overlay">
+  <div class="sheet">
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;">&#9881;&#65039; Configuracoes</div>
+    <button class="sbt" style="background:#10201a;color:#38e07b;" onclick="abrirDesbloquearTodos()">&#128275; Desbloquear todos os cards</button>
+    <button class="sbt" style="background:#1a1010;color:#ff4f5a;" onclick="abrirZerarTudo()">&#128465;&#65039; Zerar tudo</button>
+    <button class="sbt cancel" onclick="fecharConfig()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ZERAR TUDO -->
+<div class="overlay" id="zerar-overlay">
+  <div class="sheet">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px;color:#ff4f5a;">&#9888;&#65039; Zerar tudo</div>
+    <div style="font-size:13px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:20px;">Apaga TODOS os lancamentos. Irreversivel.</div>
+    <div class="del-lbl">Digite o codigo para confirmar</div>
+    <input class="del-input" id="zerar-codigo" type="text" maxlength="6" autocomplete="off" placeholder="......">
+    <div class="del-erro" id="zerar-erro" style="display:none">Codigo incorreto.</div>
+    <div class="mbtns" style="margin-top:20px;">
+      <button class="mbtn cancel" onclick="fecharZerar()">Cancelar</button>
+      <button class="mbtn danger" onclick="confirmarZerar()">Zerar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// CONFIG
+function abrirConfig(){document.getElementById('config-overlay').classList.add('show');}
+function fecharConfig(){document.getElementById('config-overlay').classList.remove('show');}
+
+// DESBLOQUEAR INDIVIDUAL
+var desblIdx=-1;
+function abrirDesbloquear(idx){
+  var l=lancamentos[idx];
+  desblIdx=idx;
+  document.getElementById('desbl-desc').textContent=l.d;
+  document.getElementById('desbl-val').textContent=(l.t==='e'?'+ ':'- ')+fmt(l.v);
+  document.getElementById('desbl-status').textContent=l.arquivado?'Bloqueado pelo PDF do grupo':l.enviadoGeral?'Enviado no PDF Geral':'';
+  document.getElementById('desbl-codigo').value='';
+  document.getElementById('desbl-erro').style.display='none';
+  document.getElementById('desbloquear-overlay').classList.add('show');
+  setTimeout(function(){document.getElementById('desbl-codigo').focus();},100);
+}
+function fecharDesbloquear(){document.getElementById('desbloquear-overlay').classList.remove('show');desblIdx=-1;}
+function desbloquearCard(){
+  var cod=document.getElementById('desbl-codigo').value.trim();
+  if(cod!=='abc123'){document.getElementById('desbl-erro').style.display='block';document.getElementById('desbl-codigo').value='';return;}
+  lancamentos[desblIdx].arquivado=false;
+  lancamentos[desblIdx].enviadoGeral=false;
+  localStorage.setItem('caixa_v1',JSON.stringify(lancamentos));
+  if(window.salvarNuvem) window.salvarNuvem();
+  atualizar();fecharDesbloquear();toast('Card desbloqueado');
+}
+
+// DESBLOQUEAR TODOS
+function abrirDesbloquearTodos(){
+  fecharConfig();
+  document.getElementById('desbl-todos-codigo').value='';
+  document.getElementById('desbl-todos-erro').style.display='none';
+  setTimeout(function(){document.getElementById('desbl-todos-overlay').classList.add('show');document.getElementById('desbl-todos-codigo').focus();},200);
+}
+function fecharDesbloquearTodos(){document.getElementById('desbl-todos-overlay').classList.remove('show');}
+function desbloquearTodos(){
+  var cod=document.getElementById('desbl-todos-codigo').value.trim();
+  if(cod!=='abc123'){document.getElementById('desbl-todos-erro').style.display='block';document.getElementById('desbl-todos-codigo').value='';return;}
+  var count=0;
+  lancamentos.forEach(function(x,i){if(x.arquivado||x.enviadoGeral){lancamentos[i].arquivado=false;lancamentos[i].enviadoGeral=false;count++;}});
+  localStorage.setItem('caixa_v1',JSON.stringify(lancamentos));
+  if(window.salvarNuvem) window.salvarNuvem();
+  atualizar();fecharDesbloquearTodos();toast(count+' cards desbloqueados');
+}
+
+// ZERAR TUDO
+function abrirZerarTudo(){
+  fecharConfig();
+  document.getElementById('zerar-codigo').value='';
+  document.getElementById('zerar-erro').style.display='none';
+  setTimeout(function(){document.getElementById('zerar-overlay').classList.add('show');document.getElementById('zerar-codigo').focus();},200);
+}
+function fecharZerar(){document.getElementById('zerar-overlay').classList.remove('show');}
+function confirmarZerar(){
+  var cod=document.getElementById('zerar-codigo').value.trim();
+  if(cod!=='abc123'){document.getElementById('zerar-erro').style.display='block';document.getElementById('zerar-codigo').value='';return;}
+  lancamentos=[];
+  localStorage.removeItem('caixa_v1');
+  if(window.salvarNuvem) window.salvarNuvem();
+  fecharZerar();atualizar();toast('Tudo zerado');
+}
+</script>
+
+<!-- Firebase Realtime Database -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC8ISaOAA6ySV1ItSMBiEkJCpeVVodYyts",
+      authDomain: "caixa-jl.firebaseapp.com",
+      databaseURL: "https://caixa-jl-default-rtdb.firebaseio.com",
+      projectId: "caixa-jl",
+      storageBucket: "caixa-jl.firebasestorage.app",
+      messagingSenderId: "974388794683",
+      appId: "1:974388794683:web:4ae825f55766ca2756131e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    function setStatus(msg, cor) {
+      var el = document.getElementById('sync-status');
+      if(el){ el.textContent = msg; el.style.color = cor || '#5a6b5f'; }
+    }
+
+    window.iniciarSincronizacao = function(deviceId) {
+      var dbRef = ref(db, 'lancamentos/' + deviceId);
+      var firstLoad = true;
+
+      onValue(dbRef, function(snapshot) {
+        var data = snapshot.val();
+        var arr = [];
+        if(data){
+          if(Array.isArray(data)) arr = data.filter(Boolean);
+          else arr = Object.values(data);
+        }
+        lancamentos = arr;
+        localStorage.setItem('caixa_v1', JSON.stringify(lancamentos));
+        atualizar();
+        if(firstLoad){ firstLoad=false; setStatus('Sincronizado','#38e07b'); setTimeout(function(){setStatus('');},2000); }
+      }, function(){ setStatus('Offline','#ff4f5a'); });
+
+      window.salvarNuvem = function() {
+        set(dbRef, lancamentos.length ? lancamentos : null)
+          .then(function(){ setStatus('Salvo','#38e07b'); setTimeout(function(){setStatus('');},1500); })
+          .catch(function(){ setStatus('Erro','#ff4f5a'); });
+      };
+    };
+
+    var devSalvo = localStorage.getItem('caixa_device_id');
+    if (devSalvo) window.iniciarSincronizacao(devSalvo);
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Caixa JL</string>
+    <string name="title_activity_main">Caixa JL</string>
+    <string name="package_name">com.jonata.jlcaixa</string>
+    <string name="custom_url_scheme">com.jonata.jlcaixa</string>
+</resources>

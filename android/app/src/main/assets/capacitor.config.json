@@ -1,0 +1,8 @@
+{
+	"appId": "com.jonata.jlcaixa",
+	"appName": "Caixa JL",
+	"webDir": "www",
+	"android": {
+		"allowMixedContent": true
+	}
+}
