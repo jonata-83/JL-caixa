@@ -199,6 +199,16 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
     <div class="desc-wrap"><input type="text" id="lancInput" placeholder="Digitar..." maxlength="100" autocomplete="off"></div>
     <button class="btn btn-s" onclick="lancar('s')"><span style="width:10px;height:10px;background:var(--btn-s-text);border-radius:50%;display:block;"></span></button>
   </div>
+  <div class="input-row" id="lancDataRow" style="margin-top:6px;display:none;">
+    <div style="width:46px;"></div>
+    <div class="desc-wrap">
+      <input type="date" id="lancData" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:100px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:6px 14px;outline:none;appearance:none;-webkit-appearance:none;">
+    </div>
+    <div style="width:46px;"></div>
+  </div>
+  <div style="text-align:center;margin-top:6px;">
+    <button onclick="toggleDataLanc()" id="btnDataToggle" style="background:none;border:none;font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);cursor:pointer;padding:2px 8px;letter-spacing:.08em;" title="Escolher data">DATA</button>
+  </div>
   <div class="jl-hint" id="jlHint">Parece com "DESPESAS JL" — confira a grafia</div>
 </div>
 
@@ -292,8 +302,8 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 <!-- PIN -->
 <div class="overlay" id="pin-overlay" style="z-index:9999;">
   <div class="sheet">
-    <div class="etitle" style="text-align:center;">&#128274; Caixa JL</div>
-    <input class="ei no" id="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="&#8226;&#8226;&#8226;&#8226;" style="text-align:center;font-size:26px;letter-spacing:10px;margin-top:6px;" autocomplete="off">
+    <div class="etitle" style="text-align:center;" id="pin-titulo">&#128274; Caixa JL</div>
+    <input class="ei no" id="pin-input" type="password" inputmode="text" maxlength="4" placeholder="&#8226;&#8226;&#8226;&#8226;" style="text-align:center;font-size:26px;letter-spacing:10px;margin-top:6px;text-transform:uppercase;" autocomplete="off">
     <div class="del-erro" id="pin-erro">PIN incorreto. Tente novamente.</div>
     <div class="mbtns">
       <button class="mbtn save" style="width:100%;" onclick="confirmarPin()">Entrar</button>
@@ -311,7 +321,9 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
       <div class="etitle" style="text-align:center;">Como vai usar o app?</div>
       <div class="mbtns" style="flex-direction:column;margin-top:14px;">
         <button class="mbtn save" style="width:100%;" onclick="novoUsuario()">&#127881; Novo usuario</button>
-        <button class="mbtn" style="width:100%;background:var(--tint-blue-bg);color:var(--accent-soft);" onclick="abrirPinEntrar()">&#128279; Entrar</button>
+        <button class="mbtn" style="width:100%;background:var(--tint-blue-bg);color:var(--accent-soft);margin-top:8px;" onclick="abrirPin('entrar')">&#128279; Entrar</button>
+        <button class="mbtn" style="width:100%;background:var(--tint-purple-bg);color:var(--tint-purple-text);margin-top:8px;" onclick="abrirPin('usuario1')">&#128100; Usuario 1</button>
+        <button class="mbtn" style="width:100%;background:var(--tint-green-bg);color:var(--green);margin-top:8px;" onclick="abrirPin('usuario2')">&#128100; Usuario 2</button>
       </div>
     </div>
   </div>
@@ -321,9 +333,14 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 const KEY='caixa_v1';
 let lancamentos=JSON.parse(localStorage.getItem(KEY)||'[]');
 
-var PIN_CORRETO='2340';
 var DEVICE_KEY='caixa_device_id';
-var GRUPO_COMPARTILHADO='compartilhado';
+
+var USUARIOS={
+  entrar:  {pin:'2340', grupo:'compartilhado',   nome:'Entrar'},
+  usuario1:{pin:'ABCD', grupo:'usuario1',         nome:'Usuario 1'},
+  usuario2:{pin:'1234', grupo:'usuario2',         nome:'Usuario 2'},
+};
+var pinAlvo=null;
 
 function gerarDeviceId(){
   if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -348,14 +365,20 @@ function novoUsuario(){
   finalizarEspaco(gerarDeviceId());
 }
 
-function abrirPinEntrar(){
+function abrirPin(tipo){
+  pinAlvo=tipo;
+  var titulo=document.getElementById('pin-titulo');
+  if(titulo) titulo.textContent='🔒 '+USUARIOS[tipo].nome;
+  var input=document.getElementById('pin-input');
+  input.value='';
+  input.inputMode=(tipo==='entrar'||tipo==='usuario2')?'numeric':'text';
+  document.getElementById('pin-erro').style.display='none';
   document.getElementById('espaco-overlay').classList.remove('show');
   document.getElementById('pin-overlay').classList.add('show');
-  setTimeout(function(){
-    var el=document.getElementById('pin-input');
-    if(el) el.focus();
-  },200);
+  setTimeout(function(){ input.focus(); },200);
 }
+
+function abrirPinEntrar(){ abrirPin('entrar'); }
 
 function voltarParaEscolha(){
   var input=document.getElementById('pin-input');
@@ -367,13 +390,14 @@ function voltarParaEscolha(){
 
 function confirmarPin(){
   var input=document.getElementById('pin-input');
-  var val=input.value.trim();
-  if(val!==PIN_CORRETO){
+  var val=input.value.trim().toUpperCase();
+  var cfg=USUARIOS[pinAlvo||'entrar'];
+  if(val!==cfg.pin.toUpperCase()){
     document.getElementById('pin-erro').style.display='block';
     input.value='';
     return;
   }
-  finalizarEspaco(GRUPO_COMPARTILHADO);
+  finalizarEspaco(cfg.grupo);
 }
 
 (function(){
@@ -387,6 +411,17 @@ function fmt(v){return 'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})
 function fmtS(v){
   var s=Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
   return 'R$ '+s;
+}
+
+function parseDt(dt){
+  // formato: "DD/MM/AAAA HH:MM" ou "DD/MM/AAAA 00:00"
+  if(!dt) return 0;
+  var m=dt.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5]).getTime();
+  // fallback: DD/MM/AAAA sem hora
+  var m2=dt.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m2) return new Date(+m2[3],+m2[2]-1,+m2[1]).getTime();
+  return 0;
 }
 
 function atualizar(){
@@ -403,8 +438,11 @@ function atualizar(){
   var vazio=document.getElementById('vazio');
   if(!lancamentos.length){lista.innerHTML='';vazio.style.display='block';return;}
   vazio.style.display='none';
-  lista.innerHTML=[...lancamentos].reverse().map(function(l,i){
-    var idx=lancamentos.length-1-i;
+  // ordenar por data decrescente mantendo idx original
+  var indexados=lancamentos.map(function(l,i){return {l:l,idx:i};});
+  indexados.sort(function(a,b){ return parseDt(b.l.dt)-parseDt(a.l.dt); });
+  lista.innerHTML=indexados.map(function(item){
+    var l=item.l, idx=item.idx;
     var arq=l.arquivado?' arquivado':l.enviadoGeral?' enviado':'';
     return '<div class="item '+l.t+arq+'" data-idx="'+idx+'"'+
       ' ontouchstart="onLongPressStart(event,'+idx+')"'+
@@ -432,15 +470,44 @@ function parseLanc(raw){
   return {valor:valor,desc:desc};
 }
 
+function toggleDataLanc(){
+  var row=document.getElementById('lancDataRow');
+  var btn=document.getElementById('btnDataToggle');
+  var aberto=row.style.display!=='none';
+  if(aberto){
+    row.style.display='none';
+    btn.style.color='var(--muted)';
+    document.getElementById('lancData').value='';
+  } else {
+    row.style.display='flex';
+    btn.style.color='var(--accent-soft)';
+    setTimeout(function(){document.getElementById('lancData').focus();},100);
+  }
+}
+
 function lancar(tipo){
   var raw=document.getElementById('lancInput').value.trim().toUpperCase();
   if(!raw){toast('Digite o valor e descricao');return;}
   var p=parseLanc(raw);
   if(!p||p.valor<=0){toast('Valor invalido');return;}
-  var agora=new Date();
-  var dt=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  var dataEl=document.getElementById('lancData');
+  var dt;
+  if(dataEl && dataEl.value){
+    var parts=dataEl.value.split('-');
+    dt=parts[2]+'/'+parts[1]+'/'+parts[0]+' 00:00';
+  } else {
+    var agora=new Date();
+    dt=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }
+
   lancamentos.push({t:tipo,v:p.valor,d:p.desc||(tipo==='e'?'ENTRADA':'SAIDA'),dt:dt});
   document.getElementById('lancInput').value='';
+  if(dataEl) {
+    dataEl.value='';
+    document.getElementById('lancDataRow').style.display='none';
+    document.getElementById('btnDataToggle').style.color='var(--muted)';
+  }
   document.getElementById('lancInput').focus();
   document.getElementById('preview').classList.remove('show');
   checarDespesasJL();
